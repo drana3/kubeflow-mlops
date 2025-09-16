@@ -128,15 +128,20 @@ resource "kubernetes_config_map" "pipeline_install_config" {
   }
 
   data = {
-    ARTIFACT_BUCKET  = "kubeflow-prod-artifacts"
+    ARTIFACT_BUCKET   = "kubeflow-prod-artifacts"
     ARTIFACT_ENDPOINT = "s3.amazonaws.com"
+    dbHost            = aws_db_instance.kfp_rds.address
+    dbPort            = "3306"
+    dbType            = "mysql"
+    pipelineDb        = "mlpipeline"
+  }
 
-    dbHost     = aws_db_instance.kfp_rds.address
-    dbPort     = "3306"
-    dbType     = "mysql"
-    pipelineDb = "mlpipeline"
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [metadata]
   }
 }
+
 
 # Create a DB subnet group from private subnets
 resource "aws_db_subnet_group" "kfp" {
