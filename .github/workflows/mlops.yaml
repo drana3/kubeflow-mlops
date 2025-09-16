@@ -5,13 +5,14 @@ on:
     branches: [ main ]
     paths:
       - "pipelines/**"
+      - "mlops/**"
   workflow_dispatch:
 
 jobs:
   mlops:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      id-token: write   # required for AWS OIDC
       contents: read
 
     steps:
@@ -24,12 +25,12 @@ jobs:
           role-to-assume: arn:aws:iam::891713918387:role/GitHubActionsTerraformRole
           aws-region: us-east-1
 
-      - name: Login to ECR
+      - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password --region us-east-1 | \
           docker login --username AWS --password-stdin 891713918387.dkr.ecr.us-east-1.amazonaws.com
 
-      - name: Build & Push Components
+      - name: Build & Push Kubeflow Components
         run: |
           for dir in pipelines/components/*; do
             if [ -d "$dir" ]; then
@@ -37,15 +38,16 @@ jobs:
               image=891713918387.dkr.ecr.us-east-1.amazonaws.com/kubeflow-prod-$name:latest
               echo "🚀 Building and pushing $image"
               docker build -t $image $dir
+              aws ecr create-repository --repository-name kubeflow-prod-$name || true
               docker push $image
             fi
           done
 
-      - name: Install KFP SDK
-        run: pip install kfp==2.7.0 boto3 mlflow
+      - name: Install KFP SDK & Tools
+        run: pip install kfp==2.7.0 boto3 mlflow joblib scikit-learn pandas
 
       - name: Compile Kubeflow Pipeline
-        run: python pipelines/rag_pipeline.py --compile
+        run: python pipelines/rag_pipeline.py
 
       - name: Upload Pipeline to Kubeflow
         run: |
