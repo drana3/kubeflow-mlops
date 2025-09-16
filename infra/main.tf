@@ -97,18 +97,28 @@ module "eks" {
   }
 }
 
+# --- Kubeflow Pipelines install (using official manifests) ---
 resource "null_resource" "kubeflow_pipelines" {
   provisioner "local-exec" {
     command = <<EOT
-      kubectl apply -k ${path.module}/../kubeflow/kfp-manifests/cluster-scoped-resources
-      kubectl wait --for=condition=Established crd/applications.app.k8s.io --timeout=60s
-      kubectl apply -k ${path.module}/../kubeflow/kfp-manifests/env/platform-agnostic
+      echo "[INFO] Updating kubeconfig for EKS cluster..."
+      aws eks update-kubeconfig --name ${module.eks.cluster_name} --region ${var.aws_region}
+
+      echo "[INFO] Applying Kubeflow Pipelines cluster-scoped resources..."
+      kubectl apply -k "github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=2.0.5"
+
+      echo "[INFO] Waiting for CRDs..."
+      kubectl wait --for=condition=Established crd/applications.app.k8s.io --timeout=90s || true
+
+      echo "[INFO] Applying Kubeflow Pipelines platform-agnostic manifests..."
+      kubectl apply -k "github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic?ref=2.0.5"
+
+      echo "[INFO] Kubeflow Pipelines installation triggered!"
     EOT
+    interpreter = ["/bin/bash", "-c"]
   }
 
-  depends_on = [
-    module.eks
-  ]
+  depends_on = [module.eks]
 }
 
 resource "kubernetes_config_map" "pipeline_install_config" {
