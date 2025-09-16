@@ -1,0 +1,34 @@
+# --- Terraform ---
+.terraform/                # Terraform local cache
+*.tfstate                  # State files (use S3 backend)
+*.tfstate.*                
+crash.log
+*.tfvars                   # Variable files with secrets
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# --- Python / Poetry ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.egg-info/
+.venv/
+.venv*/
+env/
+venv/
+poetry.lock
+.cache/
+
+# --- VSCode / IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
