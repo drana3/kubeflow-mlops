@@ -17,7 +17,7 @@ resource "aws_iam_role" "github_actions_tf" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:drana3/kubeflow-mlops:*"
+            "token.actions.githubusercontent.com:sub" = "repo:drana3/kubeflow-mlops:ref:refs/heads/main"
           }
         }
       }
