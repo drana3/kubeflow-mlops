@@ -97,6 +97,52 @@ module "eks" {
   }
 }
 
+resource "null_resource" "kubeflow_pipelines" {
+  provisioner "local-exec" {
+    command = <<EOT
+      kubectl apply -k ${path.module}/../kubeflow/kfp-manifests/cluster-scoped-resources
+      kubectl wait --for=condition=Established crd/applications.app.k8s.io --timeout=60s
+      kubectl apply -k ${path.module}/../kubeflow/kfp-manifests/env/platform-agnostic
+    EOT
+  }
+
+  depends_on = [
+    module.eks
+  ]
+}
+
+resource "kubernetes_config_map" "pipeline_install_config" {
+  metadata {
+    name      = "pipeline-install-config"
+    namespace = "kubeflow"
+  }
+
+  data = {
+    ARTIFACT_BUCKET  = "kubeflow-prod-artifacts"
+    ARTIFACT_ENDPOINT = "s3.amazonaws.com"
+
+    dbHost     = aws_db_instance.kfp_rds.address
+    dbPort     = "3306"
+    dbType     = "mysql"
+    pipelineDb = "mlpipeline"
+  }
+}
+
+resource "aws_db_instance" "kfp_rds" {
+  identifier        = "kubeflow-pipelines-db"
+  engine            = "mysql"
+  instance_class    = "db.t3.medium"
+  allocated_storage = 20
+  username          = "admin"
+  password          = "SuperSecurePassword123" # (use Secrets Manager in real prod!)
+  db_name           = "mlpipeline"
+  skip_final_snapshot = true
+
+  vpc_security_group_ids = [module.vpc.default_security_group_id]
+  db_subnet_group_name   = module.vpc.database_subnet_group
+  publicly_accessible    = false
+}
+
 # --- IAM Policy for Kubeflow Pipelines to use S3 ---
 resource "aws_iam_policy" "kubeflow_s3_policy" {
   name        = "KubeflowArtifactsS3Policy"
