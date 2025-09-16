@@ -1,12 +1,19 @@
 name: Test AWS OIDC Role
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:   # lets you trigger manually from Actions tab
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:       # 👈 required for OIDC
+      id-token: write
+      contents: read
+
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
