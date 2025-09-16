@@ -1,0 +1,61 @@
+name: MLOps - Build & Deploy Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "pipelines/**"
+  workflow_dispatch:
+
+jobs:
+  mlops:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::891713918387:role/GitHubActionsTerraformRole
+          aws-region: us-east-1
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | \
+          docker login --username AWS --password-stdin 891713918387.dkr.ecr.us-east-1.amazonaws.com
+
+      - name: Build & Push Components
+        run: |
+          for dir in pipelines/components/*; do
+            if [ -d "$dir" ]; then
+              name=$(basename $dir)
+              image=891713918387.dkr.ecr.us-east-1.amazonaws.com/kubeflow-prod-$name:latest
+              echo "🚀 Building and pushing $image"
+              docker build -t $image $dir
+              docker push $image
+            fi
+          done
+
+      - name: Install KFP SDK
+        run: pip install kfp==2.7.0 boto3 mlflow
+
+      - name: Compile Kubeflow Pipeline
+        run: python pipelines/rag_pipeline.py --compile
+
+      - name: Upload Pipeline to Kubeflow
+        run: |
+          python mlops/scripts/upload_pipeline.py \
+            --host "https://kubeflow.example.com/pipeline" \
+            --pipeline-file pipelines/rag_pipeline.yaml
+
+      - name: Trigger Pipeline Run
+        run: |
+          python mlops/scripts/trigger_kfp_run.py \
+            --host "https://kubeflow.example.com/pipeline" \
+            --pipeline-file pipelines/rag_pipeline.yaml \
+            --params '{"s3_input":"s3://kubeflow-prod-datasets/iris"}'
