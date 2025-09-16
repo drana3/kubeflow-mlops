@@ -10,6 +10,9 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    permissions:              # 👈 add this
+      id-token: write         # needed for OIDC
+      contents: read          # needed for checkout
 
     steps:
       - name: Checkout repo
