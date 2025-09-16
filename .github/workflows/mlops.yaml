@@ -52,12 +52,12 @@ jobs:
       - name: Upload Pipeline to Kubeflow
         run: |
           python mlops/scripts/upload_pipeline.py \
-            --host "https://kubeflow.example.com/pipeline" \
+            --host "http://localhost:8080/pipeline" \
             --pipeline-file pipelines/rag_pipeline.yaml
 
       - name: Trigger Pipeline Run
         run: |
           python mlops/scripts/trigger_kfp_run.py \
-            --host "https://kubeflow.example.com/pipeline" \
+            --host "http://localhost:8080/pipeline" \
             --pipeline-file pipelines/rag_pipeline.yaml \
             --params '{"s3_input":"s3://kubeflow-prod-datasets/iris"}'
