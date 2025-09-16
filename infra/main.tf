@@ -128,21 +128,29 @@ resource "kubernetes_config_map" "pipeline_install_config" {
   }
 }
 
+# Create a DB subnet group from private subnets
+resource "aws_db_subnet_group" "kfp" {
+  name       = "${var.cluster_name}-db-subnet-group"
+  subnet_ids = module.vpc.private_subnets
+  tags = {
+    Name = "${var.cluster_name}-db-subnet-group"
+  }
+}
+
 resource "aws_db_instance" "kfp_rds" {
   identifier        = "kubeflow-pipelines-db"
   engine            = "mysql"
   instance_class    = "db.t3.medium"
   allocated_storage = 20
   username          = "admin"
-  password          = "SuperSecurePassword123" # (use Secrets Manager in real prod!)
+  password          = "SuperSecurePassword123" # (move to AWS Secrets Manager in prod)
   db_name           = "mlpipeline"
   skip_final_snapshot = true
 
   vpc_security_group_ids = [module.vpc.default_security_group_id]
-  db_subnet_group_name   = module.vpc.database_subnet_group
+  db_subnet_group_name   = aws_db_subnet_group.kfp.name
   publicly_accessible    = false
 }
-
 # --- IAM Policy for Kubeflow Pipelines to use S3 ---
 resource "aws_iam_policy" "kubeflow_s3_policy" {
   name        = "KubeflowArtifactsS3Policy"
